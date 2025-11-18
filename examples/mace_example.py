@@ -1,11 +1,20 @@
 from ase.io import read
 from ase.visualize import view
 from ase.build import bulk
+from ase.build import molecule
+from ase.build import fcc100, add_adsorbate
 
+"""
 # Create a bulk structure with a defect
 atoms = bulk('Au', 'fcc', a=4.08, cubic=True)
 atoms = atoms * (2, 2, 2)
 atoms[0].symbol = 'Ag'  # introduce a defect
+"""
+# Create a surface with an adsorbate
+atoms = fcc100('Cu', size=(3, 3, 3), vacuum=10.0)
+adsorbate = molecule('H2O')
+adsorbate.rotate(180, 'x')
+add_adsorbate(atoms, adsorbate, height=2.5, position='ontop')
 
 view(atoms)
 
@@ -28,7 +37,8 @@ def evaluate_structure(atoms, index):
 
 evaluate_structure(atoms, 0)
 
-view(atoms)
+from ase.io import read
+view(read("0.traj@:"))
 
 
 """
