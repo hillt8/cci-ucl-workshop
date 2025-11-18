@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.append(rf"{os.getcwd()}")
+sys.path.append(rf"{os.getcwd()}") # This is specific to the VSCode project to run code as modules
 from codebase.io.klmc_parser import gin_files_to_db
 from codebase.rematch.prescreen import match_cluster_size
 
@@ -23,13 +23,12 @@ from ase.visualize import view
 from ase.io import read
 # view(read(f"{prescreened_file}@:"))
 
-
 # Calculate the energy of each structure and save in a database
 # for image in images:
 from mace.calculators import mace_mp
 from ase.optimize import BFGS
 
-PARAMS = {'model': "medium",
+PARAMS = {'model': "small",
           'dispersion': True,
           'default_dtype': 'float64',
           'device': 'cpu'}
@@ -42,3 +41,4 @@ def evaluate_structure(atoms, index):
 with connect("codebase/data/prescreened_structures.db") as db:
     for row in db.select():
         evaluate_structure(row.toatoms(), row.id)
+

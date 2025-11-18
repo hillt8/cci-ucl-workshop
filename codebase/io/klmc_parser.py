@@ -1,0 +1,89 @@
+import os
+from ase import Atoms
+from ase.db import connect
+
+def parse_gin(gin_path):
+    symbols = []
+    positions = []
+    cell = None
+    reading_atoms = False
+
+    with open(gin_path, 'r') as f:
+        lines = f.readlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+
+            if not line or line.lower().startswith('name'):
+                i += 1
+                continue
+
+            if line.lower().startswith('scell'):
+                i += 1
+                while i < len(lines) and not lines[i].strip():
+                    i += 1
+                if i >= len(lines):
+                    raise ValueError("Expected cell parameters after 'scell'")
+                parts = lines[i].strip().split()
+                if len(parts) < 3:
+                    raise ValueError("Not enough values in scell line")
+                a, b, c = map(float, parts[:3])
+                cell = [[a, 0, 0], [0, b, 0], [0, 0, c]]
+                i += 1
+                continue
+
+            if line.lower().startswith('cartesian'):
+                reading_atoms = True
+                i += 1
+                continue
+
+            if reading_atoms:
+                parts = line.split()
+                if len(parts) < 5:
+                    i += 1
+                    continue
+                if parts[1].lower() != 'core':
+                    i += 1
+                    continue
+
+                symbol = parts[0]
+                try:
+                    x, y, z = map(float, parts[2:5])
+                except ValueError:
+                    raise ValueError(f"Cannot parse coordinates in line: {line}")
+
+                symbols.append(symbol)
+                positions.append([x, y, z])
+
+            i += 1
+
+    if cell is None:
+        raise ValueError("No 'scell' cell parameters found in the .gin file.")
+
+    atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=True)
+    return atoms
+
+def gin_files_to_db(folder_path, output_name="structures.db"):
+    
+    input_folder = os.path.abspath(folder_path)
+
+    gin_files = [f for f in os.listdir(input_folder) if f.endswith(".gin")]
+
+    if not gin_files:
+        print(f"No .gin files found in {input_folder}")
+        return
+
+    with connect(os.path.join(input_folder, output_name)) as db:
+        for gin_file in gin_files:
+            input_path = os.path.join(input_folder, gin_file)
+
+            try:
+                atoms = parse_gin(input_path)
+                db.write(atoms)
+
+            except Exception as e:
+                print(f"Failed to process {gin_file}: {e}")
+    
+
+
+
