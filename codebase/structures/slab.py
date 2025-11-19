@@ -12,7 +12,7 @@ from ase.io import read
 metal_oxide = read(r'codebase\data\prescreened_structures.db', index=0)
 metal_oxide = metal_oxide[[atom.index for atom in metal_oxide if atom.symbol in ['Ce', 'O']]]
 metal_oxide.wrap()
-
+# TODO: This is very manual, matching slab size and centering + bringing close should be done programmatically
 from ase.visualize import view
 from ase.build import fcc100
 overslab = fcc100('Au', size=(4,4,3), vacuum=0)

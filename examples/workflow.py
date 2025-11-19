@@ -19,6 +19,8 @@ species = ["Au", "Cu"]
 atoms_list = decorate_clusters(atoms, to_substitute=["Au"], substitute_with=species, 
                       mutations={0:1, 1:5, 2:5, 3:15, 4:5, 5:5, 12:1})
 
+# mutations is a dictionary of number of substitutions to make for each species
+
 from ase.visualize import view
 # reconstruct
 slab = atoms[[atom.index for atom in atoms if atom.symbol in ['Ce', 'O']]]
@@ -26,6 +28,7 @@ slabs = [slab + cluster for cluster in atoms_list]
 
 # identical structures will have identical energy - filter these out
 # Ideally we can use rematch/soap similarity here - how to define thresholds?
+
 """
 unique_slabs = []
 energies = []

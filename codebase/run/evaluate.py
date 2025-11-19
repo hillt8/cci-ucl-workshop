@@ -6,22 +6,26 @@ import os
 from ase.visualize import view
 import numpy as np
 
-PARAMS = {'model': "small",
-          'dispersion': False,
-          'default_dtype': 'float32',
-          'device': 'cpu'}
+def __init_calc():
+    PARAMS = {'model': "small",
+            'dispersion': False,
+            'default_dtype': 'float32',
+            'device': 'cpu'}
 
-calc =  mace_mp(**PARAMS)
-calc.directory = 'scratch'
-os.makedirs(calc.directory, exist_ok=True)
+    calc =  mace_mp(**PARAMS)
+    calc.directory = 'scratch'
+    os.makedirs(calc.directory, exist_ok=True)
+
+    return calc
 
 
-def evaluate_structure(atoms, index, fix=["Ce", "O"]):
-    atoms.calc = calc
+def shave_slab(atoms, threshold=3.0, fix=["Ce", "O"]):
+    ''' Remove atoms below a certain z-coordinate threshold, only for specified species to fix
+    '''
     positions = atoms.get_positions()
     oxide_z_coordinate = float(np.max([[position[2] for _, position in enumerate(positions) if atoms[_].symbol in fix]]))
 
-    threshold = oxide_z_coordinate - 2.0
+    threshold = oxide_z_coordinate - threshold
     symbols = np.array(atoms.get_chemical_symbols())
     fix_mask = np.isin(symbols, fix)
     bottom_mask = positions[:, 2] <= threshold
@@ -29,6 +33,14 @@ def evaluate_structure(atoms, index, fix=["Ce", "O"]):
     if not keep_indices:
         return
     temp_atoms = atoms.copy()[keep_indices]
+    return keep_indices, temp_atoms
+
+def evaluate_structure(atoms, index, fix=["Ce", "O"]):
+    ''' Preoptimise slab by shaving low-lying atoms, optimising, then restoring.
+    Returns the optimised full slab.'''
+    calc = __init_calc()
+    atoms.calc = calc
+    keep_indices, temp_atoms = shave_slab(atoms, threshold=3.0, fix=fix)
     
     # Run preoptimisation on reduced slab
     c = FixAtoms(indices=[atom.index for atom in temp_atoms if atom.symbol in fix])
@@ -55,7 +67,7 @@ def evaluate_structure(atoms, index, fix=["Ce", "O"]):
     return atoms
 
 def get_mace_energy(atoms):
-    atoms.calc = calc
+    atoms.calc = __init_calc()
     energy = atoms.get_potential_energy()
     return energy
 
