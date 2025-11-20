@@ -1,5 +1,4 @@
 from ase.db import connect
-from mace.calculators import mace_mp
 from ase.optimize import FIRE2
 from ase.constraints import FixAtoms
 import os
@@ -7,6 +6,8 @@ from ase.visualize import view
 import numpy as np
 
 def __init_calc():
+    # Lazy import to avoid slow startup times
+    from mace.calculators import mace_mp
     PARAMS = {'model': "small",
             'dispersion': False,
             'default_dtype': 'float32',

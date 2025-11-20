@@ -7,8 +7,6 @@ from codebase.rematch.get_rematch import soap_rematch_kernel_matrix
 from codebase.run.evaluate import shave_slab
 
 
-
-
 def get_soap(atoms):
     from dscribe.descriptors import SOAP
 
