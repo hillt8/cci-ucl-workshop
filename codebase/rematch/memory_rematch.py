@@ -1,17 +1,17 @@
 import sys
 import os
-sys.path.append(rf"{os.getcwd()}") # This is specific to the VSCode project to run code as modules
-
 from ase.db import connect
 from sklearn.preprocessing import normalize
 from codebase.rematch.get_rematch import get_cached_rematch_kernel
 from codebase.run.evaluate import shave_slab
-
+from ase import Atoms
 
 def get_soap(atoms):
     from dscribe.descriptors import SOAP
 
-    species = ["Ce", "O", "Au", "Cu"]
+    assert isinstance(atoms, Atoms), f"Must pass an Atoms object to get_soap, not {type(atoms)}."
+    
+    species = list(set(atoms.symbols))
     r_cut = 6.0
     n_max = 8
     l_max = 6
@@ -98,10 +98,3 @@ def get_unique_db(db_path, db_out_path, similarity_threshold=0.9999):
             for i in keep_indices:
                 row = db.get(i + 1)  # ASE DB indices are 1-based
                 db_out.write(row.toatoms())
-
-if __name__ == "__main__":
-    # Convenience entrypoint for ad-hoc runs; avoid running on import.
-    get_unique_db(
-        db_path=r"codebase\data\prescreened_structures.db",
-        db_out_path="test_pruning.db",
-    )
