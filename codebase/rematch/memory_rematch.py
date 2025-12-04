@@ -33,47 +33,54 @@ def filter_similar_structures(db_path,
                               kernel_gamma=1.0, 
                               kernel_alpha=1.0, 
                               kernel_threshold=1e-6):
-    keep_indices = []
-    representative_soaps = []
+    # First pass: load and normalize SOAP descriptors (O(n * descriptor_size) memory).
+    soap_list = []
     keep_mask = None
+    for row in connect(db_path).select():
+        atoms = row.toatoms()
+        if keep_mask is None:
+            # shaved atoms for speed - increase for better accuracy
+            keep_mask = shave_slab(atoms, threshold=3.0, fix=["Ce", "O"])[0]
+        soap_list.append(normalize(get_soap(atoms[keep_mask])))
+
     rematch_kernel = get_cached_rematch_kernel(
         gamma=kernel_gamma, alpha=kernel_alpha, threshold=kernel_threshold
     )
 
-    # Retrieve trimmed structures from database and prune on the fly.
-    for structure_index, row in enumerate(connect(db_path).select()):
-        atoms = row.toatoms()
+    active_indices = list(range(len(soap_list)))
+    keep_indices = []
+    i = 0
 
-        if keep_mask is None:
-            # shaved atoms for speed - increase for better accuracy
-            keep_mask = shave_slab(atoms, threshold=3.0, fix=["Ce", "O"])[0]
-
-        candidate_soap = normalize(get_soap(atoms[keep_mask]))
-
-        duplicate_of = None
+    # Iteratively prune: compare item i to all remaining items j>i and remove near-duplicates.
+    while i < len(active_indices):
+        current_index = active_indices[i]
+        current_soap = soap_list[current_index]
         max_score = None
 
-        for kept_index, kept_soap in zip(keep_indices, representative_soaps):
-            score = rematch_kernel.create([kept_soap, candidate_soap])[0, 1]
+        j = i + 1
+        while j < len(active_indices):
+            other_index = active_indices[j]
+            score = rematch_kernel.create([current_soap, soap_list[other_index]])[0, 1]
             if max_score is None or score > max_score:
                 max_score = score
-            if score >= similarity_threshold:
-                duplicate_of = kept_index
-                print(
-                    f"Pruning structure {structure_index} (SOAP {score:.6f}) "
-                    f"as duplicate of {kept_index} (>= {similarity_threshold})."
-                )
-                break
 
-        if duplicate_of is None:
-            keep_indices.append(structure_index)
-            representative_soaps.append(candidate_soap)
-            similarity_msg = (
-                f"{max_score:.6f}" if max_score is not None else "N/A (first structure)"
-            )
-            print(
-                f"Structure {structure_index} max SOAP REMatch similarity: {similarity_msg}"
-            )
+            if score >= similarity_threshold:
+                print(
+                    f"Pruning structure {other_index} (SOAP {score:.6f}) "
+                    f"as duplicate of {current_index} (>= {similarity_threshold})."
+                )
+                active_indices.pop(j)
+            else:
+                j += 1
+
+        keep_indices.append(current_index)
+        similarity_msg = (
+            f"{max_score:.6f}" if max_score is not None else "N/A (only structure remaining)"
+        )
+        print(
+            f"Structure {current_index} max SOAP REMatch similarity: {similarity_msg}"
+        )
+        i += 1
 
     return keep_indices
 
@@ -91,3 +98,5 @@ def get_unique_db(db_path, db_out_path, similarity_threshold=0.9999):
             for i in keep_indices:
                 row = db.get(i + 1)  # ASE DB indices are 1-based
                 db_out.write(row.toatoms())
+
+get_unique_db(r"codebase\data\prescreened_structures.db", db_out_path="test_pruning.db")
