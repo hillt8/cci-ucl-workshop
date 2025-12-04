@@ -78,7 +78,7 @@ def filter_similar_structures(db_path,
         # Find the indices to keep
         mask = scores < similarity_threshold
         active_indices = active_indices[mask]
-        keep_indices.append(int(current_index))
+        keep_indices.append(int(current_index + 1))
         i += 1
         # Print the timings
         print(time.time()-s, "s per iteration.")
@@ -101,6 +101,6 @@ def get_unique_db(db_path, db_out_path, similarity_threshold=0.9999, n_jobs=1):
     with connect(db_path) as db:
         with connect(db_out_path) as db_out:
             for i in keep_indices:
-                row = db.get(i + 1)  # ASE DB indices are 1-based
+                row = db.get(i)  # ASE DB indices are 1-based
                 db_out.write(row.toatoms())
 
