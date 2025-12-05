@@ -107,81 +107,19 @@ soaps = [get_soap(cluster) for cluster in clusters_cluster_only]
 similarities_cluster_only = [soap_rematch_similarity(soaps[idx_min], soap) for soap in soaps]
 similarities_cluster_only = [round(sim, 6) for sim in similarities_cluster_only]
 
-'''
-import csv
 
-rows = zip(files, energies, similarities_shaved, similarities_cluster_only)
-
-with open(output_csv, "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["filename", "energy (eV)", "sim_shaved", "sim_cluster_only"])  # header
-    writer.writerows(rows)
-
-
-import csv
-import numpy as np
-
-rows = list(zip(files, energies, similarities_cluster_only))
-rows_sorted = sorted(rows, key=lambda x: x[1])
-
-
-sim_threshold = 0.99      
-energy_threshold = 0.2 
-
-filtered_rows = []
-
-for row in rows_sorted:
-    fname, E, sim_cluster = row
-
-    is_duplicate = False
-
-    for kept in filtered_rows:
-        fname_k, E_k, sim_cluster_k = kept
-
-        # Check if within energy window
-        if abs(E - E_k) <= energy_threshold:
-            # Check if similarity indicates same structure
-            if round(sim_cluster, 2) == round(sim_cluster_k, 2):
-                is_duplicate = True
-                break
-
-    if not is_duplicate:
-        filtered_rows.append(row)
-
-with open(output_csv, "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["filename", "energy (eV)", "sim_cluster_only"])
-    writer.writerows(filtered_rows)
-
-new_db = "unique_structures.db"
-
-from ase.db import connect
-
-with connect(new_db) as db_new:
-    for atoms, fname, E, sim in filtered_rows:
-        db_new.write(
-            atoms,
-            filename=fname,
-            energy_eV=E,
-            sim_cluster_only=sim
-        )
-
-'''
 import csv
 import numpy as np
 from ase.db import connect
 
-# ----------------------------
-# Build raw rows
-# ----------------------------
 rows = list(zip(clusters, files, energies, similarities_cluster_only))
-rows_sorted = sorted(rows, key=lambda x: x[2])   # x[2] = energy
+rows_sorted = sorted(rows, key=lambda x: x[2])   
 
 sim_threshold = 0.99      
 energy_threshold = 0.2 
 
 filtered_rows = []
-unique_structures = []   # keep atoms + metadata for DB
+unique_structures = []  
 
 for atoms, fname, E, sim_cluster in rows_sorted:
 
@@ -200,17 +138,13 @@ for atoms, fname, E, sim_cluster in rows_sorted:
         filtered_rows.append((fname, E, sim_cluster))
         unique_structures.append((atoms, fname, E, sim_cluster))
 
-# ----------------------------
-# Save filtered CSV
-# ----------------------------
+
 with open(output_csv, "w", newline="") as f:
     writer = csv.writer(f)
     writer.writerow(["filename", "energy (eV)", "sim_cluster_only"])
     writer.writerows(filtered_rows)
 
-# ----------------------------
-# Save unique structures to new ASE DB
-# ----------------------------
+
 new_db = "unique_structures.db"
 
 with connect(new_db) as db_new:
